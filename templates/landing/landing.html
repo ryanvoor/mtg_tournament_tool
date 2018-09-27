@@ -1,0 +1,15 @@
+{% extends "layout.html" %}
+
+{% block head %}
+<title>TESTING</title>
+<script src="{{ url_for( 'static', filename='landing/landing.js' ) }}" type="text/javascript"></script>
+{% endblock %}
+
+{% block body %}
+<h1>Hello there! {{name}} {{number}}</h1>
+<ul>
+{% for card in cards %}
+    <li>{{ card.name }}</li>
+{% endfor %}
+</ul>
+{% endblock %}

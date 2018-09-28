@@ -1,5 +1,8 @@
 from flask import Flask, render_template, request
-from mtgsdk import Card
+
+# page imports
+from pages.tournaments import tournaments_page
+from pages.landing     import landing_page
 
 # api imports
 from api import tournaments
@@ -11,18 +14,27 @@ app = Flask( __name__ )
 ##### ROUTES #####
 ##################
 
-##### Page Routes #####
+##### Page Route #####
 
-@app.route("/<string:name>/", methods=["GET"] )
-def hello( name ):
-    number = 8675309
-    cards = Card.where( set="dom" ).all()
-    return render_template( 'landing/landing.html', name=name, number=number, cards=cards )
+@app.route( "/",                               methods=["GET"], defaults={ "option" : None, "page" : None } )
+@app.route( "/<string:page>/",                 methods=["GET"], defaults={ "option" : None                } )
+@app.route( "/<string:page>/<string:option>/", methods=["GET"]                                              )
+def page( page, option ):
+    # redirect the base url to the landing page
+    if page is None:
+        page = "landing"
 
+    # definitely make sure we're clear to call "eval" on this input
+    sanitize_page_string( page )
+
+    if option is None:
+        return eval( page + "_page" ).render_page_template( request )
+    else:
+        return eval( page + "_page" ).render_page_option_template( request )
 
 ##### API Resources Route #####
 
-@app.route( "/api/<string:resource>/",                   methods=["GET", "POST", "PUT", "DELETE"], defaults={ 'resource_id' : None } )
+@app.route( "/api/<string:resource>/",                   methods=["GET", "POST", "PUT", "DELETE"], defaults={ "resource_id" : None } )
 @app.route( "/api/<string:resource>/<int:resource_id>/", methods=["GET", "POST", "PUT", "DELETE"] )
 def api( resource, resource_id ):
     # definitely make sure we're clear to call "eval" on this input
@@ -53,11 +65,18 @@ def api( resource, resource_id ):
         return
 
 # TODO move this into its own file eventually
+####################################
 ##### Utility/Helper Functions #####
+####################################
 
 # if this returns without error then the string is fine
 def sanitize_api_resource_string( resource_string ):
     # TODO i should search the api/ directory and compare the string to file names. In addition to just checking for special characters and stuff
+    return
+
+# if this returns without error then the string is fine
+def sanitize_page_string( page_string ):
+    # TODO i should search the pages/ directory and compare the string to file names. In addition to just checking for special characters and stuff
     return
 
 ############################

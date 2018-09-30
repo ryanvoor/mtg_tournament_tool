@@ -10,15 +10,18 @@ from api import entities
 
 app = Flask( __name__ )
 
+
 ##################
 ##### ROUTES #####
 ##################
 
+
 ##### Page Route #####
 
-@app.route( "/",                               methods=["GET"], defaults={ "option" : None, "page" : None } )
-@app.route( "/<string:page>/",                 methods=["GET"], defaults={ "option" : None                } )
-@app.route( "/<string:page>/<string:option>/", methods=["GET"]                                              )
+@app.route( "/",                                    methods=["GET"], defaults={ "option" : None, "page" : None } )
+@app.route( "/page/",                               methods=["GET"], defaults={ "option" : None, "page" : None } )
+@app.route( "/page/<string:page>/",                 methods=["GET"], defaults={ "option" : None                } )
+@app.route( "/page/<string:page>/<string:option>/", methods=["GET"]                                              )
 def page( page, option ):
     # redirect the base url to the landing page
     if page is None:
@@ -28,9 +31,13 @@ def page( page, option ):
     sanitize_page_string( page )
 
     if option is None:
+
         return eval( page + "_page" ).render_page_template( request )
+
     else:
+
         return eval( page + "_page" ).render_page_option_template( request )
+
 
 ##### API Resources Route #####
 
@@ -61,8 +68,28 @@ def api( resource, resource_id ):
         return eval( resource ).delete( resource_id )
 
     else:
-        # TODO return some sort of http error
-        return
+
+        abort( 405 )
+
+
+##### HTTP Error Handling #####
+
+@app.errorhandler( Exception )
+def general_error( error ):
+    return render_template( "errors/general_error_page.html", error_message=str( error ) )
+
+@app.errorhandler( 404 )
+def http_error_not_found( error ):
+    return render_template( "errors/http_error_page.html", error_number=404, error_message="Page not found" ), 404
+
+@app.errorhandler( 405 )
+def http_error_method_not_allowed( error ):
+    return render_template( "errors/http_error_page.html", error_number=405, error_message="Method not allowed" ), 405
+
+@app.errorhandler( 500 )
+def http_error_internal_server( error ):
+    return render_template( "errors/http_error_page.html", error_number=500, error_message="Internal server error" ), 500
+
 
 # TODO move this into its own file eventually
 ####################################
@@ -78,6 +105,7 @@ def sanitize_api_resource_string( resource_string ):
 def sanitize_page_string( page_string ):
     # TODO i should search the pages/ directory and compare the string to file names. In addition to just checking for special characters and stuff
     return
+
 
 ############################
 ##### APP STARTUP CODE #####

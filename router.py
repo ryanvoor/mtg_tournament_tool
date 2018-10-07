@@ -1,4 +1,7 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, abort
+import os
+import re
+from fnmatch import fnmatch
 
 # page imports
 from pages.tournaments import tournaments_page
@@ -18,10 +21,10 @@ app = Flask( __name__ )
 
 ##### Page Route #####
 
-@app.route( "/",                                    methods=["GET"], defaults={ "option" : None, "page" : None } )
-@app.route( "/page/",                               methods=["GET"], defaults={ "option" : None, "page" : None } )
-@app.route( "/page/<string:page>/",                 methods=["GET"], defaults={ "option" : None                } )
-@app.route( "/page/<string:page>/<string:option>/", methods=["GET"]                                              )
+@app.route( "/",                                    methods=["GET"], defaults={ "option" : None, "page" : None }, strict_slashes = False )
+@app.route( "/page/",                               methods=["GET"], defaults={ "option" : None, "page" : None }, strict_slashes = False )
+@app.route( "/page/<string:page>/",                 methods=["GET"], defaults={ "option" : None                }, strict_slashes = False )
+@app.route( "/page/<string:page>/<string:option>/", methods=["GET"],                                              strict_slashes = False )
 def page( page, option ):
     # redirect the base url to the landing page
     if page is None:
@@ -41,8 +44,8 @@ def page( page, option ):
 
 ##### API Resources Route #####
 
-@app.route( "/api/<string:resource>/",                   methods=["GET", "POST", "PUT", "DELETE"], defaults={ "resource_id" : None } )
-@app.route( "/api/<string:resource>/<int:resource_id>/", methods=["GET", "POST", "PUT", "DELETE"] )
+@app.route( "/api/<string:resource>/",                   methods=["GET", "POST", "PUT", "DELETE"], defaults={ "resource_id" : None }, strict_slashes = False )
+@app.route( "/api/<string:resource>/<int:resource_id>/", methods=["GET", "POST", "PUT", "DELETE"],                                    strict_slashes = False )
 def api( resource, resource_id ):
     # definitely make sure we're clear to call "eval" on this input
     sanitize_api_resource_string( resource )
@@ -78,6 +81,14 @@ def api( resource, resource_id ):
 def general_error( error ):
     return render_template( "errors/general_error_page.html", error_message=str( error ) )
 
+@app.errorhandler( 400 )
+def http_error_not_found( error ):
+    return render_template( "errors/http_error_page.html", error_number=400, error_message="Bad request/Malformed URL" ), 400
+
+@app.errorhandler( 403 )
+def http_error_not_found( error ):
+    return render_template( "errors/http_error_page.html", error_number=403, error_message="Access was forbidden" ), 403
+
 @app.errorhandler( 404 )
 def http_error_not_found( error ):
     return render_template( "errors/http_error_page.html", error_number=404, error_message="Page not found" ), 404
@@ -98,13 +109,47 @@ def http_error_internal_server( error ):
 
 # if this returns without error then the string is fine
 def sanitize_api_resource_string( resource_string ):
-    # TODO i should search the api/ directory and compare the string to file names. In addition to just checking for special characters and stuff
+
+    if len( re.findall( "[^a-z|_]", resource_string ) ) > 0:
+
+        abort( 400 )
+
+    if resource_string + ".py" not in get_files_in_dir_with_extension( "api", "py" ):
+
+        abort( 403 )
+
     return
 
 # if this returns without error then the string is fine
 def sanitize_page_string( page_string ):
-    # TODO i should search the pages/ directory and compare the string to file names. In addition to just checking for special characters and stuff
+
+    if len( re.findall( "[^a-z|_]", page_string ) ) > 0:
+
+        abort( 400 )
+
+    if page_string + "_page.py" not in get_files_in_dir_with_extension( "pages", "py" ):
+
+        abort( 403 )
+
     return
+
+def get_files_in_dir_with_extension( directory, extension ):
+
+    root = "./" + directory
+    pattern = "*." + extension
+    init_pattern = "__init__.py"
+    files_to_return = []
+
+    for path, subdirs, files in os.walk(root):
+
+        for name in files:
+
+            if fnmatch( name, pattern ) and not fnmatch( name, init_pattern ):
+
+                files_to_return.append( name )
+
+    return files_to_return
+
 
 
 ############################
@@ -113,4 +158,5 @@ def sanitize_page_string( page_string ):
 ############################
 
 if __name__ == "__main__":
+
     app.run()
